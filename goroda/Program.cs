@@ -1,81 +1,127 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 class Program
 {
-    // Список всех городов из файла
-    static List<string> allCities = new List<string>();
-    // Список названных городов
-    static List<string> usedCities = new List<string>();
-    // Список активных игроков
-    static List<string> players = new List<string>();
+    static List<string> allCities = new List<string>();  // Все города из файла
+    static List<string> usedCities = new List<string>(); // Уже использованные города
+    static List<string> players = new List<string>();    // Игроки
+    static bool playAgainstComputer = false;             // Флаг игры против компьютера
 
     static void Main()
     {
-        // Загружаем города из файла
-        LoadCitiesFromFile("C:\\Users\\kuno_\\OneDrive\\Рабочий стол\\txt-cities-russia.txt");
+        LoadCitiesFromFile("C:\\Users\\kuno_\\OneDrive\\Рабочий стол\\txt-cities-russia.txt");  // Загрузка городов из файла
 
         Console.WriteLine("Добро пожаловать в игру 'Города'!");
-        Console.WriteLine("Правила: игроки по очереди называют города. Название следующего города должно начинаться с последней буквы предыдущего города.");
-        Console.WriteLine("Чтобы завершить игру, введите 'сдаюсь'.");
 
-        // Получаем количество игроков
-        int playerCount = GetPlayerCount();
+        // Выбор игры: против компьютера или других людей
+        playAgainstComputer = ChooseGameMode();
 
-        // Инициализируем список игроков
+        int playerCount = playAgainstComputer ? 1 : GetPlayerCount();  // Количество игроков
+
         for (int i = 1; i <= playerCount; i++)
         {
             players.Add($"Игрок {i}");
         }
 
-        string previousCity = "";
+        if (playAgainstComputer)
+        {
+            players.Add("Компьютер");
+        }
+
+        string previousCity = "";  // Последний названный город
         int currentPlayerIndex = 0;
 
+        // Игра продолжается, пока не останется 1 игрок
         while (players.Count > 1)
         {
-            // Текущий игрок
             string currentPlayer = players[currentPlayerIndex];
             Console.WriteLine($"\nХод {currentPlayer}");
 
-            Console.Write("Введите город: ");
-            string currentCity = Console.ReadLine().Trim();
+            string currentCity;
 
-            if (currentCity.ToLower() == "сдаюсь")
+            // Логика хода компьютера
+            if (currentPlayer == "Компьютер")
             {
-                Console.WriteLine($"{currentPlayer} сдался.");
-                players.RemoveAt(currentPlayerIndex);
-
-                // Если игрок сдался, уменьшаем индекс, чтобы не пропустить следующего игрока
-                if (currentPlayerIndex >= players.Count)
+                currentCity = ComputerTurn(previousCity);
+                if (string.IsNullOrEmpty(currentCity))
                 {
-                    currentPlayerIndex = 0;
+                    Console.WriteLine("Компьютер не может назвать город и проигрывает!");
+                    players.Remove(currentPlayer);
+                    break;
                 }
-            }
-            else if (!IsCityInList(currentCity))
-            {
-                Console.WriteLine("Такого города не существует. Попробуйте снова.");
-            }
-            else if (usedCities.Contains(currentCity.ToLower()))
-            {
-                Console.WriteLine("Этот город уже был назван. Попробуйте другой.");
-            }
-            else if (!IsValidCity(previousCity, currentCity))
-            {
-                Console.WriteLine($"Город должен начинаться с буквы '{GetLastLetter(previousCity)}'. Попробуйте снова.");
+                else
+                {
+                    Console.WriteLine($"Компьютер назвал город: {currentCity}");
+                }
             }
             else
             {
-                usedCities.Add(currentCity.ToLower());
-                previousCity = currentCity;
+                // Ход игрока
+                Console.Write("Введите город: ");
+                currentCity = Console.ReadLine().Trim();
 
-                // Переход хода к следующему игроку
-                currentPlayerIndex = (currentPlayerIndex + 1) % players.Count;
+                // Если игрок сдаётся
+                if (currentCity.ToLower() == "сдаюсь")
+                {
+                    Console.WriteLine($"{currentPlayer} сдался.");
+                    players.RemoveAt(currentPlayerIndex);
+                    if (currentPlayerIndex >= players.Count)
+                    {
+                        currentPlayerIndex = 0;
+                    }
+                    continue;
+                }
+
+                // Приводим город к нижнему регистру для проверки
+                string currentCityLower = currentCity.ToLower();
+
+                // Проверка города игрока
+                if (!IsCityInList(currentCityLower))
+                {
+                    Console.WriteLine("Такого города не существует. Попробуйте снова.");
+                    continue;
+                }
+                else if (usedCities.Contains(currentCityLower))
+                {
+                    Console.WriteLine("Этот город уже был назван. Попробуйте другой.");
+                    continue;
+                }
+                else if (!IsValidCity(previousCity, currentCityLower))
+                {
+                    Console.WriteLine($"Город должен начинаться с буквы '{GetLastLetter(previousCity)}'. Попробуйте снова.");
+                    continue;
+                }
             }
+
+            // Добавляем город в список использованных
+            usedCities.Add(currentCity.ToLower());
+            previousCity = currentCity;
+
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.Count;
         }
 
-        // Победитель
-        Console.WriteLine($"\nПобедил {players[0]}! Игра завершена.");
+        if (players.Count == 1)
+        {
+            Console.WriteLine($"\nПобедил {players[0]}! Игра завершена.");
+        }
+    }
+
+    // Метод для выбора режима игры
+    static bool ChooseGameMode()
+    {
+        while (true)
+        {
+            Console.Write("Хотите играть против компьютера? (да/нет): ");
+            string choice = Console.ReadLine().ToLower();
+
+            if (choice == "да") return true;
+            if (choice == "нет") return false;
+
+            Console.WriteLine("Некорректный выбор. Пожалуйста, введите 'да' или 'нет'.");
+        }
     }
 
     // Метод для получения количества игроков
@@ -94,6 +140,25 @@ class Program
                 Console.WriteLine("Некорректный ввод. Попробуйте снова.");
             }
         }
+    }
+
+    // Логика хода компьютера
+    static string ComputerTurn(string previousCity)
+    {
+        Random rand = new Random();
+        char lastLetter = GetLastLetter(previousCity);
+
+        // Найти все города, начинающиеся с последней буквы предыдущего города
+        List<string> availableCities = allCities
+            .Where(city => !usedCities.Contains(city.ToLower()) && city.ToLower()[0] == lastLetter)
+            .ToList();
+
+        if (availableCities.Count == 0) return null;
+
+        // Компьютер выбирает случайный город
+        string chosenCity = availableCities[rand.Next(availableCities.Count)];
+        usedCities.Add(chosenCity.ToLower());  // Добавляем город в список использованных
+        return chosenCity;
     }
 
     // Метод загрузки городов из файла
