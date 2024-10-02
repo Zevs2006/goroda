@@ -12,7 +12,7 @@ class Program
 
     static void Main()
     {
-        LoadCitiesFromFile("C:\\Users\\kuno_\\OneDrive\\Рабочий стол\\txt-cities-russia.txt");  // Загрузка городов из файла
+        LoadCitiesFromFile("C:\\Users\\Student406-11\\Downloads\\txt-cities-russia.txt");  // Загрузка городов из файла
 
         Console.WriteLine("Добро пожаловать в игру 'Города'!");
 
@@ -99,6 +99,14 @@ class Program
             // Добавляем город в список использованных
             usedCities.Add(currentCity.ToLower());
             previousCity = currentCity;
+
+            // Проверка, остались ли города для следующего игрока
+            if (!CanPlayerContinue(previousCity))
+            {
+                Console.WriteLine($"{currentPlayer} не может назвать город и проигрывает!");
+                players.Remove(currentPlayer);
+                break;
+            }
 
             currentPlayerIndex = (currentPlayerIndex + 1) % players.Count;
         }
@@ -201,5 +209,12 @@ class Program
         }
 
         return lastChar;
+    }
+
+    // Метод для проверки, может ли игрок продолжить игру
+    static bool CanPlayerContinue(string previousCity)
+    {
+        char lastLetter = GetLastLetter(previousCity);
+        return allCities.Any(city => !usedCities.Contains(city.ToLower()) && city.ToLower()[0] == lastLetter);
     }
 }
